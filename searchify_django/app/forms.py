@@ -5,6 +5,7 @@ class UploadForm(forms.Form):
         'id': 'file_id'
     }),
     allow_empty_file=True, # for test files
+    required= False
     )
 
 class SearchForm(forms.Form):

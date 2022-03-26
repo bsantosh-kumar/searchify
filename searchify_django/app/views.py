@@ -3,10 +3,10 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.generic import FormView
 from .forms import *
-
+import pymongo
 import pytesseract    # ======= > Add
 from PIL import Image
-
+from json import dumps
 # 
 from docx import Document
 import nltk
@@ -14,7 +14,7 @@ import re
 import openpyxl
 from nltk.corpus import stopwords
 
-# nltk.download('stopwords')
+nltk.download('stopwords')
 sw_nltk = stopwords.words('english')
 
 def index(request) :
@@ -140,9 +140,11 @@ def processFile(request) :
         print("upload = ",upload)
         file_type = upload.content_type
         print("file_type = ",file_type)
-        
+        mongo_url="mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false"
         words = []
-
+        client=pymongo.MongoClient(mongo_url)
+        db=client['searchify']
+        collection=db['locations']
         try :
             if(file_type.endswith(('jpeg','png'))):
                 txt = extractWordsFromImage(upload)
@@ -150,6 +152,12 @@ def processFile(request) :
                 words = remove_stopwords(words)
 
                 print(words)
+                
+                for key in words:
+                    if collection.find({"keyword":key}).count()==0:
+                        collection.insert_one({"keyword":key,"info":[{"filename":upload.name}]})
+                    else:
+                        collection.update({"keyword":key},{"$push":{"info":{"filename":upload.name}}})
                 print('image')
 
             elif(file_type.endswith('pdf')):
@@ -159,16 +167,31 @@ def processFile(request) :
                 print('xlxs')
                 words_locs = extractWordsFromXlxs(upload)
                 print(words_locs)
-
+                for key,value in words_locs.items():
+                    print("vishwas",key,value)
+                    if collection.find({"keyword":key}).count()==0:
+                        collection.insert_one({"keyword":key,"info":[{"filename":upload.name,"cell-location":value}]})
+                    else:
+                        collection.update({"keyword":key},{"$push":{"info":{"filename":upload.name,"cell-location":value}}})
             elif(file_type.endswith('text/plain')):
                 words_lines = extractWordsFromText(upload)
                 print(words_lines)
                 print('txt')
-
+                for key,value in words_lines.items():
+                    if collection.find({"keyword":key}).count()==0:
+                        collection.insert_one({"keyword":key,"info":[{"filename":upload.name,"line-numbers":value}]})
+                    else:
+                        collection.update({"keyword":key},{"$push":{"info":{"filename":upload.name,"line-numbers":value}}})
             elif(file_type.endswith('document')):
                 words_paras = extractWordsFromDocx(upload)
                 print(words_paras)
                 print('docx')
+                print("name:",upload.name)
+                for key,value in words_paras.items():
+                    if collection.find({"keyword":key}).count()==0:
+                        collection.insert_one({"keyword":key,"info":[{"filename":upload.name,"paragraph-number":value}]})
+                    else:
+                        collection.update({"keyword":key},{"$push":{"info":{"filename":upload.name,"paragraph-number":value}}})
 
             else :
                 print("not known type")
@@ -176,5 +199,26 @@ def processFile(request) :
         except Exception as e:
             print("file parsing error")
             print(e)
-    
+        client.close()
+
     return HttpResponse('Parsed, go back for another file, <a href="/"> go back </a>')
+
+def searchLocations(request) :
+    print("hi")
+    mongo_url="mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false"
+    words = []
+    client=pymongo.MongoClient(mongo_url)
+    db=client['searchify']
+    collection=db['locations']
+
+    keyword = request.POST["keyword"]
+    result=collection.find({"keyword":keyword})
+    # result_json = loads(dumps(result))
+    # print(result_json)
+    print(type(result))
+    all_locations=[]
+    for item in result:
+        all_locations.extend(item['info'])
+    print(type(dumps(all_locations)))
+    json_str = dumps(all_locations, indent = 5)
+    return render(request, 'app/results.html', context = {"result" : json_str})
