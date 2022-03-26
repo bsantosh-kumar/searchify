@@ -89,8 +89,54 @@ class HomeView(FormView):
     template_name = 'app/index.html'
     success_url = '/'
     
-    def form_valid(self, form):
-        upload = self.request.FILES['file']
+    # def form_valid(self, form):
+    #     upload = self.request.FILES['file']
+    #     print("upload = ",upload)
+    #     file_type = upload.content_type
+    #     print("file_type = ",file_type)
+        
+    #     words = []
+
+    #     try :
+    #         if(file_type.endswith(('jpeg','png'))):
+    #             txt = extractWordsFromImage(upload)
+    #             words = split_string(txt)
+    #             words = remove_stopwords(words)
+
+    #             print(words)
+    #             print('image')
+
+    #         elif(file_type.endswith('pdf')):
+    #             print('pdf')
+
+    #         elif(file_type.endswith('sheet')):
+    #             print('xlxs')
+    #             words_locs = extractWordsFromXlxs(upload)
+    #             print(words_locs)
+
+    #         elif(file_type.endswith('text/plain')):
+    #             words_lines = extractWordsFromText(upload)
+    #             print(words_lines)
+    #             print('txt')
+
+    #         elif(file_type.endswith('document')):
+    #             words_paras = extractWordsFromDocx(upload)
+    #             print(words_paras)
+    #             print('docx')
+
+    #         else :
+    #             print("not known type")
+
+    #     except Exception as e:
+    #         print("file parsing error")
+    #         print(e)
+
+
+    #     return super().form_valid(form)
+
+def processFile(request) :
+    if request.method == 'POST' :
+        upload = request.FILES['file']
         print("upload = ",upload)
         file_type = upload.content_type
         print("file_type = ",file_type)
@@ -130,6 +176,5 @@ class HomeView(FormView):
         except Exception as e:
             print("file parsing error")
             print(e)
-
-
-        return super().form_valid(form)
+    
+    return HttpResponse('Parsed, go back for another file, <a href="/"> go back </a>')
