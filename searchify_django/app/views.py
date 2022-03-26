@@ -7,6 +7,15 @@ from .forms import *
 import pytesseract    # ======= > Add
 from PIL import Image
 
+# 
+from docx import Document
+import nltk
+import re
+import openpyxl
+from nltk.corpus import stopwords
+
+# nltk.download('stopwords')
+sw_nltk = stopwords.words('english')
 
 def index(request) :
     return HttpResponse("Hello, world. You're at the index.")
@@ -15,6 +24,42 @@ def extractWordsFromImage(image) :
     txt = pytesseract.image_to_string(Image.open(image))
     return txt
 
+def extractWordsFromText(path):
+    l=[]
+    m={}
+    
+    lines=path.readlines()
+    for count, line in enumerate(lines) :
+        line = str(line, 'utf-8')  # to remove b'' infront of byte strings
+        l=line.split()
+        for i in l :
+            i=i.lower()
+            if i not in sw_nltk :
+                if m.get(i)==None :
+                    m[i]=[]
+                    m[i].append(count+1)
+                else :
+                    m[i].append(count+1)
+    return m
+
+def extractWordsFromDocx(path) :
+    document=Document(path) 
+    m={}
+    count=0
+    for p in document.paragraphs :
+        count=count+1
+        l=[l for l in p.text.split() if l.lower() not in sw_nltk]
+        for i1 in l :
+            if i1 not in sw_nltk :
+                i1=i1.lower()
+                if m.get(i1)==None :
+                    m[i1]=[]
+                    m[i1].append(count)
+                else :
+                    m[i1].append(count)
+    return m
+
+
 def split_string(txt) :
     import re
     txt = txt.lower()
@@ -22,6 +67,10 @@ def split_string(txt) :
     txt = re.sub(r'\s+',' ',txt)
     return txt.split()
     
+def remove_stopwords(txt) :
+    txt = [w for w in txt if not w in sw_nltk]
+    return list(set(txt))
+
 class HomeView(FormView):
     form_class = UploadForm
     template_name = 'app/index.html'
@@ -35,20 +84,34 @@ class HomeView(FormView):
         
         words = []
 
-        if(file_type.endswith(('jpeg','png'))):
-            # txt = extractWordsFromImage(upload)
-            # words = split_string(txt)
-            # print(words)
-            print('image')
-        else :
-            print("not image")
-        # if(file_type == 'image/jpeg' or file_type == 'image/png' or file_type == 'image/jpg'):
-        #     txt = extractWordsFromImage(upload)
-        #     words = split_string(txt)
-        #     print(words)
-        # else :
-        #     print("not image")
+        try :
+            if(file_type.endswith(('jpeg','png'))):
+                txt = extractWordsFromImage(upload)
+                words = split_string(txt)
+                words = remove_stopwords(words)
 
-        # remove all stop words after extracting from any kind of file
-        
+                print(words)
+                print('image')
+
+            elif(file_type.endswith('pdf')):
+                print('pdf')
+
+            elif(file_type.endswith('text/plain')):
+                words_lines = extractWordsFromText(upload)
+                print(words_lines)
+                print('txt')
+
+            elif(file_type.endswith('document')):
+                words_paras = extractWordsFromDocx(upload)
+                print(words_paras)
+                print('docx')
+
+            else :
+                print("not known type")
+
+        except Exception as e:
+            print("file parsing error")
+            print(e)
+
+
         return super().form_valid(form)
