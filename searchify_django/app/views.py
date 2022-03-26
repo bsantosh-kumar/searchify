@@ -59,6 +59,19 @@ def extractWordsFromDocx(path) :
                     m[i1].append(count)
     return m
 
+def extractWordsFromXlxs(path) :
+    wb_obj=openpyxl.load_workbook(path)
+    sheet_obj=wb_obj.active
+    m={}
+    for i in range(1,sheet_obj.max_row+1) :
+        for j in range(1,sheet_obj.max_column+1) :
+            cell_obj=sheet_obj.cell(row=i,column=j)
+            if m.get(cell_obj.value)==None :
+                m[cell_obj.value]=[]
+                m[cell_obj.value].append([i,j])
+            else :
+                m[cell_obj.value].append([i,j])
+    return m
 
 def split_string(txt) :
     import re
@@ -95,6 +108,11 @@ class HomeView(FormView):
 
             elif(file_type.endswith('pdf')):
                 print('pdf')
+
+            elif(file_type.endswith('sheet')):
+                print('xlxs')
+                words_locs = extractWordsFromXlxs(upload)
+                print(words_locs)
 
             elif(file_type.endswith('text/plain')):
                 words_lines = extractWordsFromText(upload)
